@@ -63,6 +63,7 @@ except:
 conn.commit()
 
 # ---------------- ISSUES TABLE ----------------
+# ---------------- ISSUES TABLE (Corrected 21-Column Schema) ----------------
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS issues (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +85,8 @@ CREATE TABLE IF NOT EXISTS issues (
     assigned_at TEXT,
     in_progress_at TEXT,
     resolved_at TEXT,
-    parent_id INTEGER DEFAULT NULL         
+    closed_at TEXT,
+    parent_id INTEGER DEFAULT NULL
 )
 """)
 conn.commit()
@@ -241,7 +243,7 @@ def merge_issues(parent_id, child_id):
     """
     Links a duplicate issue to a parent issue and marks it as a duplicate.
     """
-    conn = sqlite3.connect("hostel_data.db") # Use your DB name
+    conn = sqlite3.connect("issues.db") 
     cursor = conn.cursor()
     
     # 1. Update the child issue to point to the parent and set status
@@ -404,3 +406,21 @@ def get_public_issues_for_analytics():
     conn.close()
     return data
 
+def ensure_parent_id_exists():
+    import sqlite3
+    conn = sqlite3.connect("issues.db")
+    cursor = conn.cursor()
+    try:
+        # PRAGMA lets us see the current table structure
+        cursor.execute("PRAGMA table_info(issues)")
+        cols = [info[1] for info in cursor.fetchall()]
+        if "parent_id" not in cols:
+            cursor.execute("ALTER TABLE issues ADD COLUMN parent_id INTEGER DEFAULT NULL")
+            conn.commit()
+    except Exception as e:
+        print(f"Migration error: {e}")
+    finally:
+        conn.close()
+
+# Call this at the start of your script
+ensure_parent_id_exists()
